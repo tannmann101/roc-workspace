@@ -1,12 +1,27 @@
 import { mockItems } from './data/mockItems.js';
 import { ZONE_META, STATUS_ZONE } from './theme.js';
 
-function ZoneCard({ zoneKey, className, decoration, onSelect, count, peek }) {
+// Furniture placed like it would actually sit in a room: back-wall pieces
+// (corkboard, cabinet, shelf) are smaller and higher; floor pieces (drawer,
+// workbench) are bigger and lower, closer to the viewer. Corkboard sits
+// above the drawer on the left (a wall-then-floor pair), the cabinet sits
+// above the workbench in the center (same pairing, workbench pulled forward
+// into the room), and the shelf holds the right wall on its own.
+const ZONES = [
+  { key: 'corkboard', top: 4, left: 3, width: 25, height: 30 },
+  { key: 'cabinet', top: 2, left: 31, width: 24, height: 39 },
+  { key: 'shelf', top: 9, left: 77, width: 20, height: 27 },
+  { key: 'drawer', top: 65, left: 3, width: 16, height: 29, standing: true },
+  { key: 'workbench', top: 44, left: 21, width: 76, height: 51, standing: true },
+];
+
+function ZoneCard({ zoneKey, className, decoration, style, onSelect, count, peek }) {
   const meta = ZONE_META[zoneKey];
   return (
     <button
       type="button"
-      className={className}
+      className={`zone-spot ${className}`}
+      style={style}
       onClick={() => onSelect(zoneKey)}
       aria-label={`Open ${meta.label}`}
     >
@@ -37,9 +52,9 @@ function ZoneCard({ zoneKey, className, decoration, onSelect, count, peek }) {
 
 function CorkboardDecor() {
   const cards = [
-    { top: 8, left: '10%', rotate: -6, w: 46, h: 32, color: '#F4D9A4' },
-    { top: 14, left: '55%', rotate: 4, w: 40, h: 30, color: '#EFC9C0' },
-    { top: 10, left: '78%', rotate: -3, w: 34, h: 34, color: '#D7E3D0' },
+    { top: '5%', left: '10%', rotate: -6, w: '34%', h: '19%', color: '#F4D9A4' },
+    { top: '9%', left: '54%', rotate: 4, w: '30%', h: '17%', color: '#EFC9C0' },
+    { top: '6%', left: '78%', rotate: -3, w: '18%', h: '20%', color: '#D7E3D0' },
   ];
   return (
     <>
@@ -58,7 +73,7 @@ function CorkboardDecor() {
           />
           <span
             className="cork-pin"
-            style={{ top: c.top - 3, left: `calc(${c.left} + ${c.w / 2}px - 4px)` }}
+            style={{ top: `calc(${c.top} - 5px)`, left: `calc(${c.left} + ${c.w} / 2 - 4px)` }}
           />
         </span>
       ))}
@@ -68,19 +83,19 @@ function CorkboardDecor() {
 
 function CabinetDecor() {
   const jars = [
-    { left: 18, bottom: 14, color: '#B7C9C4' },
-    { left: 42, bottom: 14, color: '#D7B98A' },
-    { left: 66, bottom: 14, color: '#C79A8E' },
-    { left: 90, bottom: 14, color: '#A9B98C' },
+    { left: '10%', color: '#B7C9C4' },
+    { left: '33%', color: '#D7B98A' },
+    { left: '56%', color: '#C79A8E' },
+    { left: '79%', color: '#A9B98C' },
   ];
   return (
     <span className="cabinet-glass">
-      <span className="cabinet-shelf-line" style={{ bottom: '38%' }} />
+      <span className="cabinet-shelf-line" style={{ bottom: '36%' }} />
       {jars.map((j, i) => (
         <span
           key={i}
           className="cabinet-jar"
-          style={{ left: j.left, bottom: j.bottom, background: j.color }}
+          style={{ left: j.left, bottom: 8, background: j.color }}
         />
       ))}
     </span>
@@ -89,19 +104,20 @@ function CabinetDecor() {
 
 function ShelfDecor() {
   const tools = [
-    { left: '20%', w: 8, h: 30, color: '#C0392B', rotate: -4 },
-    { left: '45%', w: 10, h: 24, color: '#D9B589', rotate: 2 },
-    { left: '68%', w: 9, h: 34, color: '#5C6B2C', rotate: -2 },
+    { left: '16%', w: 8, h: 26, color: '#C0392B', rotate: -4 },
+    { left: '42%', w: 10, h: 20, color: '#D9B589', rotate: 2 },
+    { left: '66%', w: 9, h: 30, color: '#5C6B2C', rotate: -2 },
   ];
   return (
     <>
-      <span className="shelf-plank" />
+      <span className="shelf-plank" style={{ bottom: '30%' }} />
       {tools.map((t, i) => (
         <span
           key={i}
           className="shelf-tool"
           style={{
             left: t.left,
+            bottom: 'calc(30% + 8px)',
             width: t.w,
             height: t.h,
             background: t.color,
@@ -115,9 +131,11 @@ function ShelfDecor() {
 
 function WorkbenchDecor() {
   const items = [
-    { top: 62, left: '12%', w: 34, h: 20, color: '#C0392B', rotate: -6 },
-    { top: 100, left: '55%', w: 40, h: 16, color: '#4C5B61', rotate: 4 },
-    { top: 66, left: '72%', w: 22, h: 22, color: '#5C6B2C', rotate: 10 },
+    { top: '46%', left: '8%', w: '9%', h: '20%', color: '#C0392B', rotate: -6 },
+    { top: '58%', left: '30%', w: '11%', h: '14%', color: '#4C5B61', rotate: 4 },
+    { top: '44%', left: '48%', w: '7%', h: '22%', color: '#5C6B2C', rotate: 10 },
+    { top: '56%', left: '64%', w: '10%', h: '16%', color: '#D9B589', rotate: -8 },
+    { top: '48%', left: '82%', w: '8%', h: '18%', color: '#8C6410', rotate: 6 },
   ];
   return (
     <>
@@ -148,26 +166,48 @@ function DrawerDecor() {
   );
 }
 
-const ZONES = [
-  { key: 'corkboard', className: 'z-corkboard', decoration: <CorkboardDecor /> },
-  { key: 'cabinet', className: 'z-cabinet', decoration: <CabinetDecor /> },
-  { key: 'shelf', className: 'z-shelf', decoration: <ShelfDecor /> },
-  { key: 'drawer', className: 'z-drawer', decoration: <DrawerDecor /> },
-  { key: 'workbench', className: 'z-workbench', decoration: <WorkbenchDecor /> },
-];
+const DECOR = {
+  corkboard: <CorkboardDecor />,
+  cabinet: <CabinetDecor />,
+  shelf: <ShelfDecor />,
+  drawer: <DrawerDecor />,
+  workbench: <WorkbenchDecor />,
+};
 
 export default function RoomView({ onSelectZone }) {
   return (
     <div className="room">
-      <div className="room-grid">
+      <div className="room-stage">
+        <span className="room-wall" />
+        <span className="room-floor" />
+        <span className="room-baseboard" />
+
+        {ZONES.filter((z) => z.standing).map((zone) => (
+          <span
+            key={zone.key}
+            className="floor-shadow"
+            style={{
+              top: `${zone.top + zone.height - 2}%`,
+              left: `${zone.left + zone.width * 0.08}%`,
+              width: `${zone.width * 0.84}%`,
+            }}
+          />
+        ))}
+
         {ZONES.map((zone) => {
           const items = mockItems.filter((item) => STATUS_ZONE[item.status] === zone.key);
           return (
             <ZoneCard
               key={zone.key}
               zoneKey={zone.key}
-              className={zone.className}
-              decoration={zone.decoration}
+              className={`z-${zone.key}`}
+              decoration={DECOR[zone.key]}
+              style={{
+                top: `${zone.top}%`,
+                left: `${zone.left}%`,
+                width: `${zone.width}%`,
+                height: `${zone.height}%`,
+              }}
               onSelect={onSelectZone}
               count={items.length}
               peek={items.slice(0, 2)}
