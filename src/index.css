@@ -168,8 +168,9 @@ h1, h2, h3 {
   margin: 0 0 18px;
 }
 
-.auth-btn {
-  width: 100%;
+.google-signin-btn {
+  display: flex;
+  justify-content: center;
 }
 
 .auth-error {

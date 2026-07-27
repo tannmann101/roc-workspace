@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react';
-import { onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
-import { auth, googleProvider } from './firebase.js';
+import { useState, useEffect, useRef } from 'react';
+import { onAuthStateChanged, signInWithCredential, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { auth } from './firebase.js';
+import { loadGoogleIdentityServices } from './lib/googleIdentity.js';
+
+// The Firebase project's Google OAuth web client, from Firebase Console ->
+// Authentication -> Sign-in method -> Google -> Web SDK configuration.
+const GOOGLE_CLIENT_ID = '282211080163-b1vgvanft5b0mq98mqklggsjh1l2qpjd.apps.googleusercontent.com';
 
 export function useAuthUser() {
   const [user, setUser] = useState(undefined); // undefined = still checking, null = signed out
@@ -17,31 +22,50 @@ function Centered({ children }) {
 }
 
 export default function AuthGate({ user, forbidden, children }) {
-  const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState('');
+  const buttonRef = useRef(null);
 
-  // A redirect, not a popup: signInWithPopup depends on sessionStorage to
-  // correlate the popup window with this one, which breaks in a lot of
-  // mobile contexts -- Safari's storage partitioning, in-app browsers, and
-  // especially an installed PWA running in standalone mode (this app is
-  // one) -- surfacing as "missing initial state". Redirect has no such
-  // dependency. getRedirectResult picks up the result once the browser
-  // navigates back here; onAuthStateChanged (above) is what actually
-  // drives the signed-in UI, this is just here to surface a failure.
+  // Renders Google's own "Sign in with Google" button and hands back an ID
+  // token through an in-page callback -- no page navigation, no popup
+  // window. Both signInWithPopup and signInWithRedirect correlate the
+  // sign-in attempt with this page via sessionStorage/a pending-redirect
+  // record, which breaks once an installed iOS Home Screen web app leaves
+  // its own browsing context for accounts.google.com and back (that's the
+  // "missing initial state" error and the sign-in loop that followed
+  // switching to redirect). The Identity Services credential flow never
+  // navigates away at all, so none of that applies.
   useEffect(() => {
-    getRedirectResult(auth).catch((err) => setError(err.message || 'Sign-in failed.'));
-  }, []);
+    if (user) return undefined;
+    let cancelled = false;
 
-  const doSignIn = async () => {
-    setSigningIn(true);
-    setError('');
-    try {
-      await signInWithRedirect(auth, googleProvider);
-    } catch (err) {
-      setError(err.message || 'Sign-in failed.');
-      setSigningIn(false);
-    }
-  };
+    loadGoogleIdentityServices()
+      .then((google) => {
+        if (cancelled || !buttonRef.current) return;
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: async ({ credential }) => {
+            setError('');
+            try {
+              await signInWithCredential(auth, GoogleAuthProvider.credential(credential));
+            } catch (err) {
+              setError(err.message || 'Sign-in failed.');
+            }
+          },
+        });
+        google.accounts.id.renderButton(buttonRef.current, {
+          type: 'standard',
+          theme: 'filled_blue',
+          size: 'large',
+          shape: 'pill',
+          text: 'signin_with',
+        });
+      })
+      .catch((err) => setError(err.message || 'Could not load Google Sign-In.'));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   if (user === undefined) {
     return (
@@ -56,9 +80,7 @@ export default function AuthGate({ user, forbidden, children }) {
       <Centered>
         <h1 className="auth-title">The Workshop</h1>
         <p className="auth-sub">Sign in to see the shared workspace.</p>
-        <button type="button" className="btn-primary auth-btn" onClick={doSignIn}>
-          {signingIn ? 'Signing in…' : 'Sign in with Google'}
-        </button>
+        <div ref={buttonRef} className="google-signin-btn" />
         {error ? <p className="auth-error">{error}</p> : null}
       </Centered>
     );
