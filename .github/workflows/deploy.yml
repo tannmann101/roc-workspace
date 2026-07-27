@@ -17,6 +17,12 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Same environment as the deploy job below -- if VITE_GEMINI_API_KEY was
+    # added as an environment secret on github-pages rather than a plain
+    # repository secret, this job couldn't see it otherwise (repository
+    # secrets remain visible either way, so this is a strict superset).
+    environment:
+      name: github-pages
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
