@@ -8,6 +8,11 @@ on:
       - 'firebase.json'
       - '.github/workflows/deploy-functions.yml'
   workflow_dispatch:
+    inputs:
+      recreate:
+        description: 'Delete the function first, then deploy fresh (use if the public-invoker grant ever gets stuck -- that only gets (re)applied on function creation, not on a normal update)'
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -22,6 +27,11 @@ jobs:
         working-directory: functions
       - name: Write service account key
         run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > ${{ runner.temp }}/gcp-key.json
+      - name: Delete existing function (recreate)
+        if: ${{ github.event.inputs.recreate == 'true' }}
+        run: npx firebase-tools functions:delete generateText --project roc-workspace --region us-central1 --force
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-key.json
       - name: Sync the Anthropic secret
         # `firebase deploy` won't pick up a secret that was created directly
         # in Secret Manager -- it wants to manage the binding itself via this
