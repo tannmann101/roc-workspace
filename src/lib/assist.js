@@ -1,61 +1,85 @@
 // assist.js
-// Placeholder "AI assist" generators. These are deterministic templates,
-// not a real model call -- there's no backend yet for that (see README).
-// They exist to prove out the interaction pattern every AI tool in this
-// app should follow: generate a draft into a preview, let her read it,
-// and only apply it to the real fields if she clicks Accept. Nothing here
-// writes to item state on its own.
+// Real AI-assist generators, backed by the Gemini free tier (see gemini.js
+// and the README for setup). Every function here is the "generate" half of
+// the AIAssist pattern used throughout the app: it only ever returns a
+// draft for a preview. Nothing in this file writes to item state -- that
+// happens in the page component, and only when she clicks "Use this."
 
-export function draftIdeaExpansion(idea) {
-  const cat = idea.category || 'this kind of project';
-  return [
-    `What's the rough budget range for ${idea.title.toLowerCase()}?`,
-    `Does it need a tool or material you don't already have on hand?`,
-    `Is there a ${cat} idea already in Upcoming this could piggyback on, to save a trip for materials?`,
-  ];
+import { callGemini, safeParseJson } from './gemini.js';
+
+export async function draftIdeaExpansion(idea) {
+  const text = await callGemini(
+    `You're helping someone think through a home project idea before they commit to it. ` +
+      `The idea: "${idea.title}"${idea.notes ? ` -- notes: ${idea.notes}` : ''}${idea.category ? ` (category: ${idea.category})` : ''}.\n\n` +
+      `Give exactly 3 short, concrete questions or considerations she should think about before moving this idea forward. ` +
+      `One per line, no numbering, no preamble, no markdown.`,
+  );
+  const lines = text
+    .split('\n')
+    .map((line) => line.replace(/^[-*\d.]+\s*/, '').trim())
+    .filter(Boolean);
+  return lines.length > 0 ? lines.slice(0, 3) : [text];
 }
 
-export function draftProfile(idea) {
-  const isTask = idea.kind === 'task' || idea.kind === 'maintenance';
+export async function draftProfile(idea) {
+  const text = await callGemini(
+    `You're drafting a project profile for a home-workshop planning app. ` +
+      `The idea: "${idea.title}"${idea.notes ? ` -- notes: ${idea.notes}` : ''}. ` +
+      `Kind: ${idea.kind}. Category: ${idea.category || 'unspecified'}.\n\n` +
+      `Respond with ONLY strict JSON, no markdown fences, no commentary, in exactly this shape:\n` +
+      `{"scope": "1-2 sentences describing what will actually be done", "outcome": "1 sentence describing what changes once it's done", "timeframe": "a short realistic estimate like '1-2 weekends' or 'one afternoon'", "resources": ["material or tool 1", "material or tool 2"]}\n` +
+      `Keep the resources array to only things clearly implied by the idea; use an empty array if unclear.`,
+  );
+  const parsed = safeParseJson(text);
   return {
-    scope: isTask
-      ? `Do the core work for "${idea.title}" in a single session, checking for anything that needs to be ordered ahead of time.`
-      : `Break "${idea.title}" into rough stages: prep and measure, build or install, then finish. Adjust once the real steps are clearer.`,
-    outcome: `Draft: describe what changes once "${idea.title}" is done -- what stops being a problem, or what becomes possible.`,
-    timeframe: isTask ? 'One session' : '1-2 weekends',
-    resources: idea.notes && /\b(oak|pine|walnut|paint|stain|glue)\b/i.test(idea.notes)
-      ? [{ label: 'Materials mentioned in the idea notes -- confirm quantities', acquired: false }]
+    scope: parsed?.scope || 'Could not draft a scope -- try regenerating.',
+    outcome: parsed?.outcome || '',
+    timeframe: parsed?.timeframe || '',
+    resources: Array.isArray(parsed?.resources)
+      ? parsed.resources.filter((label) => typeof label === 'string').map((label) => ({ label, acquired: false }))
       : [],
   };
 }
 
-export function suggestWeeklyPlan(item) {
-  const days = /weekend/i.test(item.timeframe || '') ? ['Sat', 'Sun'] : ['Tue', 'Sat'];
+export async function suggestWeeklyPlan(item) {
+  const text = await callGemini(
+    `Someone is planning when to work on "${item.title}", estimated timeframe: "${item.timeframe || 'unknown'}". ` +
+      `Suggest which 1-2 days of a Mon-Sun week fit best for a task like this (weekend-sized work should land on Sat/Sun, ` +
+      `quick tasks can go on a weekday evening). Respond with ONLY strict JSON, no markdown fences: ` +
+      `{"days": ["Sat","Sun"], "note": "one short sentence explaining the suggestion"} ` +
+      `using day abbreviations Mon/Tue/Wed/Thu/Fri/Sat/Sun.`,
+  );
+  const parsed = safeParseJson(text);
+  const validDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   return {
-    days,
-    note: `Based on "${item.timeframe || 'the estimated timeframe'}", ${days.join(' and ')} look like the best fit -- adjust to whatever your week actually looks like.`,
+    days: Array.isArray(parsed?.days) ? parsed.days.filter((d) => validDays.includes(d)) : [],
+    note: parsed?.note || 'Could not generate a suggestion -- try regenerating.',
   };
 }
 
-export function generateWeeklyFocus(activeItems) {
+export async function generateWeeklyFocus(activeItems) {
   if (activeItems.length === 0) {
     return "Nothing's active right now -- pull something from Up Next when you're ready to start.";
   }
-  const lines = activeItems.map((item) => {
-    const nextTask = (item.tasks || []).find((t) => !t.done);
-    const due = item.dueDate ? ` (due ${item.dueDate})` : '';
-    return nextTask
-      ? `${item.title}${due}: next up is "${nextTask.label}."`
-      : `${item.title}${due}: no open tasks logged yet -- worth breaking it down.`;
-  });
-  return `This week: ${lines.join(' ')}`;
+  const summary = activeItems
+    .map((item) => {
+      const next = (item.tasks || []).find((t) => !t.done);
+      return `- ${item.title}${item.dueDate ? ` (due ${item.dueDate})` : ''}: next task is ${next ? `"${next.label}"` : 'none logged'}`;
+    })
+    .join('\n');
+  return callGemini(
+    `Here are the active projects in a home workshop tracker:\n${summary}\n\n` +
+      `Write a short (2-4 sentence), warm, practical "this week's focus" note referencing what's next and any due dates. ` +
+      `Plain text, no markdown.`,
+  );
 }
 
-export function generateProgressReport(item) {
+export async function generateProgressReport(item) {
   const tasks = item.tasks || [];
   const done = tasks.filter((t) => t.done).length;
-  const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
-  const lastLog = (item.log || [])[item.log?.length - 1];
-  const lastLine = lastLog ? ` Last note: "${lastLog.note}"` : '';
-  return `${item.title} is ${pct}% through its checklist (${done}/${tasks.length} tasks).${lastLine}`;
+  const logText = (item.log || []).map((entry) => `${entry.date}: ${entry.note}`).join('\n') || 'No log entries.';
+  return callGemini(
+    `Project: "${item.title}". Tasks complete: ${done}/${tasks.length}. Recent log:\n${logText}\n\n` +
+      `Write a short 1-3 sentence progress summary. Plain text, no markdown.`,
+  );
 }

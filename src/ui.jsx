@@ -62,15 +62,38 @@ export function EmptyState({ children }) {
 
 // A single reusable pattern for every "AI assist" tool in the app: a button
 // that generates a draft into a preview, never touching real state until
-// she explicitly accepts it.
+// she explicitly accepts it. onGenerate may return a value or a promise --
+// real AI calls are async, so this always awaits it.
 export function AIAssist({ actionLabel = 'Generate', onGenerate, onAccept, renderDraft }) {
   const [draft, setDraft] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const generate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await onGenerate();
+      setDraft(result);
+    } catch (err) {
+      setError(err.message || 'Something went wrong generating this.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (draft === null) {
     return (
-      <button type="button" className="ai-btn" onClick={() => setDraft(onGenerate())}>
-        <span className="ai-spark">✨</span> {actionLabel}
-      </button>
+      <div className="ai-assist">
+        <button type="button" className="ai-btn" disabled={loading} onClick={generate}>
+          <span className="ai-spark">✨</span> {loading ? 'Generating…' : actionLabel}
+        </button>
+        {error ? (
+          <p className="ai-error">
+            {error} <button type="button" className="link-btn ai-error-retry" onClick={generate}>Try again</button>
+          </p>
+        ) : null}
+      </div>
     );
   }
 
@@ -96,8 +119,8 @@ export function AIAssist({ actionLabel = 'Generate', onGenerate, onAccept, rende
         <button type="button" className="ai-btn-discard" onClick={() => setDraft(null)}>
           Discard
         </button>
-        <button type="button" className="ai-btn-retry" onClick={() => setDraft(onGenerate())}>
-          Regenerate
+        <button type="button" className="ai-btn-retry" disabled={loading} onClick={generate}>
+          {loading ? 'Regenerating…' : 'Regenerate'}
         </button>
       </div>
     </div>

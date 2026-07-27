@@ -117,6 +117,74 @@ h1, h2, h3 {
   background: rgba(255,255,255,0.22);
 }
 
+.nav-account {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.nav-email {
+  font-size: 12.5px;
+  color: #948569;
+}
+
+@media (max-width: 600px) {
+  .nav-account {
+    margin-left: 0;
+  }
+}
+
+/* ---------- Auth screen ---------- */
+
+.auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.auth-card {
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  background: #FFFFFF;
+  border: 1px solid #E7DCC7;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(43,36,28,0.05), 0 8px 24px rgba(43,36,28,0.08);
+  padding: 36px 32px;
+}
+
+.auth-title {
+  font-size: 22px;
+  margin: 0 0 8px;
+}
+
+.auth-sub {
+  font-size: 13.5px;
+  color: #635642;
+  margin: 0 0 18px;
+}
+
+.auth-btn {
+  width: 100%;
+}
+
+.auth-error {
+  font-size: 12.5px;
+  color: #B5622F;
+  margin-top: 14px;
+}
+
+.auth-loading {
+  font-size: 13px;
+  color: #948569;
+  text-align: center;
+  padding: 60px 0;
+}
+
 .main {
   flex: 1;
   display: flex;
@@ -531,6 +599,13 @@ h1, h2, h3 {
   filter: saturate(1.3);
 }
 
+.ai-assist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
 .ai-btn {
   appearance: none;
   border: 1px dashed #C99A3D;
@@ -543,6 +618,23 @@ h1, h2, h3 {
   border-radius: 9px;
   padding: 8px 13px;
   align-self: flex-start;
+}
+
+.ai-btn:disabled,
+.ai-btn-retry:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.ai-error {
+  font-size: 12px;
+  color: #B5622F;
+  margin: 0;
+}
+
+.ai-error-retry {
+  margin: 0;
+  font-size: 12px;
 }
 
 .ai-draft {

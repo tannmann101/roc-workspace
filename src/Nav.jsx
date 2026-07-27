@@ -8,7 +8,7 @@ const LINKS = [
   { page: 'done', status: 'done' },
 ];
 
-export default function Nav({ page, onNavigate, items }) {
+export default function Nav({ page, onNavigate, items, userEmail, onSignOut }) {
   const countFor = (status) => (status ? items.filter((item) => item.status === status).length : null);
 
   return (
@@ -31,6 +31,14 @@ export default function Nav({ page, onNavigate, items }) {
           );
         })}
       </div>
+      {userEmail ? (
+        <div className="nav-account">
+          <span className="nav-email">{userEmail}</span>
+          <button type="button" className="link-btn" onClick={onSignOut}>
+            Sign out
+          </button>
+        </div>
+      ) : null}
     </nav>
   );
 }

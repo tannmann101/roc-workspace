@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import { signOut } from 'firebase/auth';
+import AuthGate, { useAuthUser } from './AuthGate.jsx';
+import { auth } from './firebase.js';
+import { useItems } from './useItems.js';
 import Nav from './Nav.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Ideas from './pages/Ideas.jsx';
@@ -6,43 +10,29 @@ import Upcoming from './pages/Upcoming.jsx';
 import UpNext from './pages/UpNext.jsx';
 import Done from './pages/Done.jsx';
 import ProjectDetail from './pages/ProjectDetail.jsx';
-import { mockItems } from './data/mockItems.js';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-function newId() {
-  return `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-export default function App() {
-  const [items, setItems] = useState(mockItems);
+function Shell({ user }) {
+  const { items, status, addItem, patchItem } = useItems(true);
   const [page, setPage] = useState('dashboard');
   const [selectedProjectId, setSelectedProjectId] = useState(null);
 
-  const patchItem = (id, patch) => {
-    setItems((current) =>
-      current.map((item) =>
-        item.id === id ? { ...item, ...(typeof patch === 'function' ? patch(item) : patch) } : item,
-      ),
-    );
-  };
+  if (status === 'forbidden') {
+    return <AuthGate user={user} forbidden />;
+  }
 
   const handlers = {
-    addIdea: (form) => {
-      setItems((current) => [
-        ...current,
-        {
-          id: newId(),
-          title: form.title.trim(),
-          notes: form.notes.trim(),
-          kind: form.kind,
-          category: form.category.trim(),
-          rainyDay: form.rainyDay,
-          status: 'idea',
-          resources: [],
-        },
-      ]);
-    },
+    addIdea: (form) =>
+      addItem({
+        title: form.title.trim(),
+        notes: form.notes.trim(),
+        kind: form.kind,
+        category: form.category.trim(),
+        rainyDay: form.rainyDay,
+        status: 'idea',
+        resources: [],
+      }),
     moveToUpcoming: (id) => patchItem(id, { status: 'pending', approvedAt: today() }),
     updateProfile: (id, fields) => patchItem(id, fields),
     toggleResource: (id, index) =>
@@ -84,14 +74,18 @@ export default function App() {
     setPage(nextPage);
   };
 
-  const selectedProject = selectedProjectId ? items.find((i) => i.id === selectedProjectId) : null;
+  const selectedProject = selectedProjectId ? (items || []).find((i) => i.id === selectedProjectId) : null;
 
   return (
     <div className="app-shell">
-      <Nav page={page} onNavigate={navigate} items={items} />
+      <Nav page={page} onNavigate={navigate} items={items || []} userEmail={user.email} onSignOut={() => signOut(auth)} />
 
       <main className="main">
-        {selectedProject ? (
+        {status === 'loading' && !items ? (
+          <p className="auth-loading">loading the workshop…</p>
+        ) : status === 'error' ? (
+          <p className="auth-error">Couldn't load the workspace. Try refreshing.</p>
+        ) : selectedProject ? (
           <ProjectDetail
             item={selectedProject}
             onToggleTask={handlers.toggleTask}
@@ -102,12 +96,12 @@ export default function App() {
             onBack={() => setSelectedProjectId(null)}
           />
         ) : page === 'dashboard' ? (
-          <Dashboard items={items} onOpenProject={setSelectedProjectId} onNavigate={navigate} />
+          <Dashboard items={items || []} onOpenProject={setSelectedProjectId} onNavigate={navigate} />
         ) : page === 'ideas' ? (
-          <Ideas items={items} onAddIdea={handlers.addIdea} onMoveToUpcoming={handlers.moveToUpcoming} />
+          <Ideas items={items || []} onAddIdea={handlers.addIdea} onMoveToUpcoming={handlers.moveToUpcoming} />
         ) : page === 'upcoming' ? (
           <Upcoming
-            items={items}
+            items={items || []}
             onUpdateProfile={handlers.updateProfile}
             onToggleResource={handlers.toggleResource}
             onAddResource={handlers.addResource}
@@ -115,15 +109,20 @@ export default function App() {
           />
         ) : page === 'upnext' ? (
           <UpNext
-            items={items}
+            items={items || []}
             onUpdatePlanning={handlers.updatePlanning}
             onToggleDay={handlers.toggleDay}
             onStartActive={handlers.startActive}
           />
         ) : (
-          <Done items={items} />
+          <Done items={items || []} />
         )}
       </main>
     </div>
   );
+}
+
+export default function App() {
+  const user = useAuthUser();
+  return <AuthGate user={user}>{user && <Shell user={user} />}</AuthGate>;
 }

@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAllowed() {
+      return request.auth != null &&
+        request.auth.token.email in [
+          'tannerwesgardner@gmail.com',
+          'rochelleygardner@gmail.com'
+        ];
+    }
+
+    function kindValues() {
+      return ['project', 'task', 'maintenance'];
+    }
+
+    function statusValues() {
+      return ['idea', 'pending', 'on-deck', 'active', 'done'];
+    }
+
+    // Type-checks the fields that exist rather than locking every field
+    // down, so the shape can keep growing (planning tools, richer AI
+    // output, etc.) without every future addition needing a rules change.
+    function isValidItem(d) {
+      return d.title is string && d.title.size() > 0 &&
+        d.kind in kindValues() &&
+        d.status in statusValues() &&
+        (!('notes' in d) || d.notes is string) &&
+        (!('category' in d) || d.category is string) &&
+        (!('scope' in d) || d.scope is string) &&
+        (!('outcome' in d) || d.outcome is string) &&
+        (!('timeframe' in d) || d.timeframe is string) &&
+        (!('planningNotes' in d) || d.planningNotes is string) &&
+        (!('rainyDay' in d) || d.rainyDay is bool) &&
+        (!('resources' in d) || d.resources is list) &&
+        (!('tasks' in d) || d.tasks is list) &&
+        (!('log' in d) || d.log is list) &&
+        (!('weeklyPlan' in d) || d.weeklyPlan is list) &&
+        d.updatedAt is number;
+    }
+
+    match /items/{itemId} {
+      allow read, delete: if isAllowed();
+      allow create, update: if isAllowed() && isValidItem(request.resource.data);
+    }
+  }
+}
