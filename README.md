@@ -1,32 +1,34 @@
 # The Workshop
 
-A project / task / maintenance management environment for a visual thinker,
-styled as a home craft workshop. The interface is a room, not a list: every
-zone in the room is a stage in an item's lifecycle, and the room itself is
-the dashboard.
+A project / task / maintenance workspace for managing things from first idea
+to finished work: Ideas → Upcoming (project profiles) → Up Next (planning)
+→ Active (reached from the Dashboard) → Done. See git history for the
+design process -- this README covers what's actually running.
 
-See the full build brief in the original task description for the metaphor,
-zones, data model, interview plan, and open questions -- this README tracks
-build status against that plan.
+## Data & sync
 
-## Status: Phase 1 -- design pass
+Data lives in a shared Firestore `items` collection -- every item is its
+own document, and both accounts read/write the same collection with
+**live sync** (not refresh-on-open): checking off a task, editing a
+profile field, or moving something between phases shows up for both of
+you without a manual refresh.
 
-Per the build brief's phased plan, this is a **static mockup**, iterated on
-before any data layer is wired in:
+Access is locked down with Google sign-in: only the two email addresses
+listed in `firestore.rules` can read or write.
 
-- **Room view** -- the illustrated workshop dashboard. Five clickable zones
-  (Corkboard, Cabinet, Shelf, Workbench, Drawer), each with a live count
-  badge and a peek at its top items.
-- **The Workbench** -- fully built out zone view (active work, item cards
-  with kind/category/due-date/notes).
-- **Corkboard, Cabinet, Shelf, Drawer** -- browsable zone views (real mock
-  items render, but the zone-specific working controls -- pin/promote,
-  groom/date-set, reorder/start, browse-the-record -- are stubbed for a
-  later phase).
+## AI assist, running for free
 
-All data is a hardcoded `mockItems` array (`src/data/mockItems.js`) shaped
-like the `Item` entity in the data model sketch. **Nothing persists yet** --
-no Firebase, no CRUD. That's phase 2+.
+Every "✨ Generate..." button (idea expansion, project-profile drafts,
+schedule suggestions, weekly focus, progress reports) calls the real
+**Gemini API free tier** (`src/lib/gemini.js`) -- not a paid model, and not
+a template. Every one of them follows the same rule: generate a draft into
+a preview, and only touch a real item if she clicks "Use this." Nothing
+here writes to an item on its own.
+
+There's no backend in this stack, so the Gemini key is called directly
+from the browser and locked down with an **HTTP-referrer restriction**
+instead of being hidden behind a server (see setup step 6 below) -- the
+standard approach for a client-only app like this one.
 
 ## Running locally
 
@@ -35,28 +37,85 @@ npm install
 npm run dev
 ```
 
-## Build phases (from the brief)
+## Local development against a fake project (no real Firebase needed)
 
-1. **Design pass** (this phase) -- static mockup, iterate on the room feel.
-2. Data layer -- Item model, statuses, CRUD, local persistence.
-3. Zone views wired to real data; room view cues go live.
-4. Seed with real interview data; use for a week.
-5. Refinements -- recurrence, resource checklists, rainy-day filter, image
-   handling, in whatever order a week of real use suggests.
+`.env.local` sets `VITE_USE_FIREBASE_EMULATOR=true` (create it yourself,
+it's gitignored -- see `.env.local.example`), so `npm run dev` talks to a
+local emulator instead of your real project. Requires a Java runtime
+installed once.
 
-## Open questions (unresolved, carried from the brief)
+```
+npm run emulators   # starts local Auth + Firestore emulators
+npm run dev          # in another terminal
+npm run test:rules   # scripted checks of firestore.rules (allow-list + schema)
+```
 
-- Shelf capacity: hard limit or soft convention?
-- Where do completed recurring maintenance items respawn (Cabinet or
-  Shelf)?
-- Notifications/reminders, or purely a pull-based space?
-- Does the Drawer keep everything forever, or archive out after a while?
+The AI-assist buttons need a real `VITE_GEMINI_API_KEY` in `.env.local` to
+do anything even against the emulator -- Gemini itself isn't emulated.
 
-## Deploying to GitHub Pages (later phase)
+## One-time cloud setup (free, ~15 minutes)
 
-Once there's a data layer worth deploying, the plan is the same pattern used
-elsewhere in this household's tooling: PWA on GitHub Pages via GitHub
-Actions, Firebase for shared sync. `vite.config.js` is already set up with
-`base: '/roc-workspace/'` for that. A `.github/workflows/deploy.yml` is
-included and will activate once this repo has a `main` branch to deploy
-from.
+This app uses its own Firebase project, separate from any other app built
+this way -- its data, quota, and security rules are fully isolated.
+
+1. Go to <https://console.firebase.google.com>, sign in, and create a new
+   project (no credit card needed -- the free "Spark" plan is enough).
+2. **Enable Firestore**: in the left sidebar, Build → Firestore Database →
+   Create database → start in **production mode** → pick any region.
+3. **Enable Google sign-in**: Build → Authentication → Get started → Sign-in
+   method tab → enable the **Google** provider.
+4. **Authorize your domain**: still in Authentication → Settings → Authorized
+   domains → add `<your-username>.github.io`.
+5. **Register a web app**: Project settings (gear icon) → General → "Your apps"
+   → Add app → Web (`</>`). Copy the `firebaseConfig` object it gives you,
+   and paste those values into [src/firebase.js](src/firebase.js),
+   replacing the `REPLACE_ME` placeholders.
+6. **Get a free Gemini API key**: go to <https://aistudio.google.com/apikey>,
+   sign in, and create a key (no credit card needed for the free tier).
+   Then in [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   (same Google account, pick the project AI Studio created), open that
+   key and under "Application restrictions" choose **Websites**, then add
+   `https://<your-username>.github.io/*` (and `http://localhost:*` if you
+   want it to also work in local dev without the emulator). This is what
+   keeps the key from being usable if someone copies it out of the
+   deployed site's JS bundle.
+7. **Add the Gemini key as a GitHub Actions secret**: in the GitHub repo →
+   Settings → Secrets and variables → Actions → New repository secret →
+   name it `VITE_GEMINI_API_KEY`, paste the key. The deploy workflow reads
+   it from there at build time so it never needs to be committed.
+8. **Deploy the security rules** in [firestore.rules](firestore.rules) --
+   the emails are already set to the two household accounts, so just run:
+   ```
+   npx firebase-tools login
+   npx firebase-tools deploy --only firestore:rules --project <your-project-id>
+   ```
+   (or paste the contents of `firestore.rules` directly into Firebase Console →
+   Firestore Database → Rules → Publish).
+9. Commit and push. Once the site redeploys, open it, sign in with Google on
+   both phones, and you should see the same shared, empty workspace --
+   ready for real ideas.
+
+If either of you ever needs to change which accounts are allowed, edit the
+email list in `firestore.rules` and redeploy the rules (step 8).
+
+## Starting empty, on purpose
+
+There's no seed data in this build -- the mock demo items from the design
+pass are gone. The whole point of this phase was to make the app good
+enough that she can flesh out her real projects herself, straight into the
+real tool, instead of a round of interviews feeding a spec. First real use
+starts from an empty Ideas page.
+
+## Deploying to GitHub Pages (free)
+
+1. Push this project to the `main` branch of its GitHub repo.
+2. In the repo settings → Pages, set the source to "GitHub Actions".
+3. Settings → Environments → `github-pages` → Deployment branches and tags
+   → make sure `main` is allowed (GitHub sometimes creates this
+   environment restricted to nothing until you touch it).
+4. The included workflow (`.github/workflows/deploy.yml`) builds and deploys
+   automatically on every push to `main`, injecting the `VITE_GEMINI_API_KEY`
+   secret at build time.
+5. Your app will be live at `https://<your-username>.github.io/roc-workspace/`.
+
+(If you rename the repo, update `base` in `vite.config.js` to match.)
