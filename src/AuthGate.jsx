@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
 import { auth, googleProvider } from './firebase.js';
 
 export function useAuthUser() {
@@ -20,14 +20,25 @@ export default function AuthGate({ user, forbidden, children }) {
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState('');
 
+  // A redirect, not a popup: signInWithPopup depends on sessionStorage to
+  // correlate the popup window with this one, which breaks in a lot of
+  // mobile contexts -- Safari's storage partitioning, in-app browsers, and
+  // especially an installed PWA running in standalone mode (this app is
+  // one) -- surfacing as "missing initial state". Redirect has no such
+  // dependency. getRedirectResult picks up the result once the browser
+  // navigates back here; onAuthStateChanged (above) is what actually
+  // drives the signed-in UI, this is just here to surface a failure.
+  useEffect(() => {
+    getRedirectResult(auth).catch((err) => setError(err.message || 'Sign-in failed.'));
+  }, []);
+
   const doSignIn = async () => {
     setSigningIn(true);
     setError('');
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
     } catch (err) {
       setError(err.message || 'Sign-in failed.');
-    } finally {
       setSigningIn(false);
     }
   };
