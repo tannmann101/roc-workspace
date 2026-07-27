@@ -16,12 +16,12 @@ const useEmulator = import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';
 const firebaseConfig = useEmulator
   ? { apiKey: 'demo-key', authDomain: 'localhost', projectId: 'demo-roc-workspace' }
   : {
-      apiKey: 'REPLACE_ME',
-      authDomain: 'REPLACE_ME.firebaseapp.com',
-      projectId: 'REPLACE_ME',
-      storageBucket: 'REPLACE_ME.firebasestorage.app',
-      messagingSenderId: 'REPLACE_ME',
-      appId: 'REPLACE_ME',
+      apiKey: 'AIzaSyBIjcvOw2mNVa98pMJqm2iewJ0-goIWHRI',
+      authDomain: 'roc-workspace.firebaseapp.com',
+      projectId: 'roc-workspace',
+      storageBucket: 'roc-workspace.firebasestorage.app',
+      messagingSenderId: '282211080163',
+      appId: '1:282211080163:web:5fba7aa699ec505702b2d6',
     };
 
 export const app = initializeApp(firebaseConfig);
