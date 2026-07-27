@@ -134,10 +134,17 @@ this way -- its data, quota, and security rules are fully isolated.
     the real problem. Then:
     [IAM & Admin → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts)
     → Create Service Account → any name (e.g. `github-deploy`) → grant it
-    the **Editor** role on the project (broad, but reliable -- Cloud
-    Functions deploys touch several services, and narrower role sets are
-    easy to get subtly wrong) → Done. Then open that service account →
-    Keys tab → Add Key → Create new key → JSON → this downloads a file.
+    the **Owner** role on the project → Done. Then open that service
+    account → Keys tab → Add Key → Create new key → JSON → this downloads
+    a file.
+
+    (Owner, not Editor -- a first attempt with Editor hit two separate
+    "permission denied" failures deploying a callable function with a
+    secret: Editor can create most resources but doesn't include
+    `setIamPolicy` on individual resources like a Secret Manager secret or
+    the Cloud Run service a function deploys onto, both of which a normal
+    functions-with-secrets deploy needs to do. Owner avoids finding a
+    third gap the hard way.)
 11. **Add that JSON as a GitHub secret**: same Settings → Secrets and
     variables → Actions page → New repository secret → name it
     `FIREBASE_SERVICE_ACCOUNT` → paste the **entire contents** of the
