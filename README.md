@@ -116,19 +116,30 @@ this way -- its data, quota, and security rules are fully isolated.
 8. **Get a Claude API key**: go to <https://console.anthropic.com>, sign
    in, add a payment method (required -- there's no free API tier), and
    create an API key under Settings → API Keys.
-9. **Store the key in Secret Manager**: [Google Cloud Console](https://console.cloud.google.com/security/secret-manager)
-   (same account, same project) → Create Secret → name it exactly
-   `ANTHROPIC_API_KEY` → paste the key as the secret value → Create.
+9. **Add the key as a GitHub secret**: GitHub repo → Settings → Secrets and
+   variables → Actions → New repository secret → name it exactly
+   `ANTHROPIC_API_KEY` → paste the raw key as the value. The deploy
+   workflow syncs it into Google Cloud Secret Manager itself on every run
+   (`firebase functions:secrets:set`) -- don't create the secret directly
+   in Secret Manager's console; Firebase's deploy tooling won't recognize
+   a secret it didn't create/bind itself, and will fail with "have no
+   value for the secret" in non-interactive mode.
 10. **Create a service account for automated deploys** (so functions can
-    deploy from GitHub Actions without you needing any local install):
+    deploy from GitHub Actions without you needing any local install). In
+    the project selector at the very top of the page, make sure
+    **roc-workspace** is actually selected before you start this --
+    Cloud Console remembers whatever project you last had open, and a
+    service account created under the wrong project will fail deploys
+    with a confusing "API not enabled" error that has nothing to do with
+    the real problem. Then:
     [IAM & Admin → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts)
     → Create Service Account → any name (e.g. `github-deploy`) → grant it
     the **Editor** role on the project (broad, but reliable -- Cloud
     Functions deploys touch several services, and narrower role sets are
     easy to get subtly wrong) → Done. Then open that service account →
     Keys tab → Add Key → Create new key → JSON → this downloads a file.
-11. **Add that JSON as a GitHub secret**: GitHub repo → Settings → Secrets
-    and variables → Actions → New repository secret → name it
+11. **Add that JSON as a GitHub secret**: same Settings → Secrets and
+    variables → Actions page → New repository secret → name it
     `FIREBASE_SERVICE_ACCOUNT` → paste the **entire contents** of the
     downloaded JSON file as the value.
 12. Commit and push. `.github/workflows/deploy-functions.yml` deploys the
