@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { AIAssist, Card, EmptyState, KindPill } from '../ui.jsx';
+import { AIAssist, Card, EmptyState, KindPill, PhaseJump } from '../ui.jsx';
 import { draftIdeaExpansion } from '../lib/assist.js';
 
 const KINDS = ['project', 'task', 'maintenance'];
 
-export default function Ideas({ items, onAddIdea, onMoveToUpcoming }) {
+export default function Ideas({ items, onAddIdea, onMoveToUpcoming, onMovePhase }) {
   const ideas = items.filter((i) => i.status === 'idea');
   const [form, setForm] = useState({ title: '', notes: '', category: '', kind: 'project', rainyDay: false });
 
@@ -104,6 +104,7 @@ export default function Ideas({ items, onAddIdea, onMoveToUpcoming }) {
                 <button type="button" className="btn-secondary" onClick={() => onMoveToUpcoming(idea.id)}>
                   Move this idea →
                 </button>
+                <PhaseJump item={idea} onMove={onMovePhase} />
               </Card>
             ))}
           </div>

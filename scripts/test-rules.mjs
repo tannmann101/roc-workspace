@@ -151,6 +151,31 @@ try {
   console.error(e.message);
 }
 
+try {
+  await assertSucceeds(
+    setDoc(
+      doc(tannerDb, 'items/item11'),
+      validItem({
+        status: 'on-deck',
+        history: [
+          { from: null, to: 'idea', at: '2026-07-20T10:00:00.000Z' },
+          { from: 'idea', to: 'on-deck', at: '2026-07-25T09:30:00.000Z' },
+        ],
+      }),
+    ),
+  );
+  check('write with a phase-movement history list is allowed', true);
+} catch (e) {
+  check('write with a phase-movement history list is allowed', false);
+  console.error(e.message);
+}
+try {
+  await assertFails(setDoc(doc(tannerDb, 'items/item12'), validItem({ history: 'not-a-list' })));
+  check('write with a wrong-typed history field is rejected', true);
+} catch (e) {
+  check('write with a wrong-typed history field is rejected', false);
+}
+
 await testEnv.cleanup();
 
 if (failures > 0) {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AIAssist, Card, Checklist, KindPill, ProgressBar } from '../ui.jsx';
+import { AIAssist, Card, Checklist, KindPill, PhaseHistory, PhaseJump, ProgressBar } from '../ui.jsx';
 import { generateProgressReport } from '../lib/assist.js';
 import { RUST } from '../theme.js';
 
@@ -10,6 +10,7 @@ export default function ProjectDetail({
   onToggleResource,
   onAddLog,
   onComplete,
+  onMovePhase,
   onBack,
 }) {
   const [logNote, setLogNote] = useState('');
@@ -80,9 +81,12 @@ export default function ProjectDetail({
             {!allDone && tasks.length > 0 ? (
               <p className="soft-warning">Some tasks are still open -- you can still mark this complete whenever you're ready.</p>
             ) : null}
-            <button type="button" className="btn-primary" onClick={() => onComplete(item.id)}>
-              Mark complete →
-            </button>
+            <div className="idea-form-row">
+              <button type="button" className="btn-primary" onClick={() => onComplete(item.id)}>
+                Mark complete →
+              </button>
+              <PhaseJump item={item} onMove={onMovePhase} />
+            </div>
           </Card>
         </section>
 
@@ -123,6 +127,11 @@ export default function ProjectDetail({
               onGenerate={() => generateProgressReport(item)}
               renderDraft={(draft) => <p className="focus-text">{draft}</p>}
             />
+
+            <div className="section-head">
+              <h2>Movement history</h2>
+            </div>
+            <PhaseHistory history={item.history} />
           </Card>
         </section>
       </div>

@@ -1,4 +1,4 @@
-import { AIAssist, Card, EmptyState, KindPill, ProgressBar } from '../ui.jsx';
+import { AIAssist, Card, EmptyState, KindPill, PhaseJump, ProgressBar } from '../ui.jsx';
 import { RUST } from '../theme.js';
 import { generateWeeklyFocus } from '../lib/assist.js';
 
@@ -10,7 +10,7 @@ function taskProgress(item) {
   return { pct: Math.round((done / tasks.length) * 100), done, total: tasks.length, next };
 }
 
-export default function Dashboard({ items, onOpenProject, onNavigate }) {
+export default function Dashboard({ items, onOpenProject, onNavigate, onMovePhase }) {
   const active = items.filter((i) => i.status === 'active');
   const upNext = items.filter((i) => i.status === 'on-deck');
   const needed = items
@@ -49,6 +49,7 @@ export default function Dashboard({ items, onOpenProject, onNavigate }) {
                       : 'No checklist logged yet'}
                   </p>
                   {item.dueDate ? <p className="project-card-due">Due {item.dueDate}</p> : null}
+                  <PhaseJump item={item} onMove={onMovePhase} />
                 </Card>
               );
             })}

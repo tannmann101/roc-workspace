@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { AIAssist, Card, Checklist, EmptyState, KindPill } from '../ui.jsx';
+import { AIAssist, Card, Checklist, EmptyState, KindPill, PhaseJump } from '../ui.jsx';
 import { draftProfile } from '../lib/assist.js';
 
-function ProfileCard({ item, onUpdateProfile, onToggleResource, onAddResource, onSendToUpNext }) {
+function ProfileCard({ item, onUpdateProfile, onToggleResource, onAddResource, onSendToUpNext, onMovePhase }) {
   const [newResource, setNewResource] = useState('');
 
   const field = (name) => (e) => onUpdateProfile(item.id, { [name]: e.target.value });
@@ -98,11 +98,12 @@ function ProfileCard({ item, onUpdateProfile, onToggleResource, onAddResource, o
       <button type="button" className="btn-primary" onClick={() => onSendToUpNext(item.id)}>
         Send to Up Next →
       </button>
+      <PhaseJump item={item} onMove={onMovePhase} />
     </Card>
   );
 }
 
-export default function Upcoming({ items, onUpdateProfile, onToggleResource, onAddResource, onSendToUpNext }) {
+export default function Upcoming({ items, onUpdateProfile, onToggleResource, onAddResource, onSendToUpNext, onMovePhase }) {
   const upcoming = items.filter((i) => i.status === 'pending');
 
   return (
@@ -129,6 +130,7 @@ export default function Upcoming({ items, onUpdateProfile, onToggleResource, onA
                 onToggleResource={onToggleResource}
                 onAddResource={onAddResource}
                 onSendToUpNext={onSendToUpNext}
+                onMovePhase={onMovePhase}
               />
             ))}
           </div>
