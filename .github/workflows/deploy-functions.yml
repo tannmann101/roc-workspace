@@ -33,6 +33,9 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-key.json
       - name: Deploy functions
-        run: npx firebase-tools deploy --only functions --project roc-workspace --non-interactive
+        # --force also auto-confirms setting up an Artifact Registry cleanup
+        # policy for old container images, which the CLI otherwise treats as
+        # a fatal error rather than a skippable prompt in non-interactive mode.
+        run: npx firebase-tools deploy --only functions --project roc-workspace --non-interactive --force
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-key.json
