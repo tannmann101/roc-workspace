@@ -35,6 +35,7 @@ service cloud.firestore {
         (!('tasks' in d) || d.tasks is list) &&
         (!('log' in d) || d.log is list) &&
         (!('weeklyPlan' in d) || d.weeklyPlan is list) &&
+        (!('history' in d) || d.history is list) &&
         d.updatedAt is number;
     }
 

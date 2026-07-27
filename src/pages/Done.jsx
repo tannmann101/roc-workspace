@@ -1,6 +1,6 @@
-import { Card, EmptyState, KindPill } from '../ui.jsx';
+import { Card, EmptyState, KindPill, PhaseJump } from '../ui.jsx';
 
-export default function Done({ items }) {
+export default function Done({ items, onMovePhase }) {
   const done = [...items.filter((i) => i.status === 'done')].sort((a, b) =>
     (b.completedAt || '').localeCompare(a.completedAt || ''),
   );
@@ -40,6 +40,7 @@ export default function Done({ items }) {
                   <span className="chip">Completed {item.completedAt}</span>
                   {item.recurrence ? <span className="chip">{item.recurrence}</span> : null}
                 </div>
+                <PhaseJump item={item} onMove={onMovePhase} />
               </Card>
             ))}
           </div>

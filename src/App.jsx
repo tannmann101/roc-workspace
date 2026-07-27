@@ -22,6 +22,31 @@ function Shell({ user }) {
     return <AuthGate user={user} forbidden />;
   }
 
+  // The single place a status change happens, so every jump between
+  // phases -- whether via a page's own "next step" button or the
+  // universal PhaseJump control -- logs the same short history trail and
+  // picks up the same phase-entry side effects (seeding a task/log list
+  // on Active, stamping a date on Done, etc). Movement between phases is
+  // just a status change and should never be blocked or handled
+  // differently depending on where it's triggered from.
+  const moveToPhase = (id, newStatus, extraFields = {}) =>
+    patchItem(id, (item) => {
+      if (item.status === newStatus) return {};
+      const history = [
+        ...(item.history || []),
+        { from: item.status || null, to: newStatus, at: new Date().toISOString() },
+      ];
+      const sideEffects =
+        newStatus === 'active'
+          ? { startedAt: today(), tasks: item.tasks || [], log: item.log || [] }
+          : newStatus === 'pending'
+            ? { approvedAt: today() }
+            : newStatus === 'done'
+              ? { completedAt: today() }
+              : {};
+      return { ...sideEffects, ...extraFields, status: newStatus, history };
+    });
+
   const handlers = {
     addIdea: (form) =>
       addItem({
@@ -32,8 +57,9 @@ function Shell({ user }) {
         rainyDay: form.rainyDay,
         status: 'idea',
         resources: [],
+        history: [{ from: null, to: 'idea', at: new Date().toISOString() }],
       }),
-    moveToUpcoming: (id) => patchItem(id, { status: 'pending', approvedAt: today() }),
+    moveToUpcoming: (id) => moveToPhase(id, 'pending'),
     updateProfile: (id, fields) => patchItem(id, fields),
     toggleResource: (id, index) =>
       patchItem(id, (item) => ({
@@ -41,20 +67,14 @@ function Shell({ user }) {
       })),
     addResource: (id, label) =>
       patchItem(id, (item) => ({ resources: [...(item.resources || []), { label, acquired: false }] })),
-    sendToUpNext: (id) => patchItem(id, { status: 'on-deck' }),
+    sendToUpNext: (id) => moveToPhase(id, 'on-deck'),
     updatePlanning: (id, note) => patchItem(id, { planningNotes: note }),
     toggleDay: (id, day) =>
       patchItem(id, (item) => {
         const days = item.weeklyPlan || [];
         return { weeklyPlan: days.includes(day) ? days.filter((d) => d !== day) : [...days, day] };
       }),
-    startActive: (id) =>
-      patchItem(id, (item) => ({
-        status: 'active',
-        startedAt: today(),
-        tasks: item.tasks || [],
-        log: item.log || [],
-      })),
+    startActive: (id) => moveToPhase(id, 'active'),
     toggleTask: (id, index) =>
       patchItem(id, (item) => ({
         tasks: (item.tasks || []).map((t, i) => (i === index ? { ...t, done: !t.done } : t)),
@@ -64,8 +84,12 @@ function Shell({ user }) {
     addLog: (id, note) =>
       patchItem(id, (item) => ({ log: [...(item.log || []), { date: today(), note }] })),
     completeProject: (id) => {
-      patchItem(id, { status: 'done', completedAt: today() });
+      moveToPhase(id, 'done');
       setSelectedProjectId(null);
+    },
+    movePhase: (id, newStatus) => {
+      moveToPhase(id, newStatus);
+      if (id === selectedProjectId && newStatus !== 'active') setSelectedProjectId(null);
     },
   };
 
@@ -93,12 +117,23 @@ function Shell({ user }) {
             onToggleResource={handlers.toggleResource}
             onAddLog={handlers.addLog}
             onComplete={handlers.completeProject}
+            onMovePhase={handlers.movePhase}
             onBack={() => setSelectedProjectId(null)}
           />
         ) : page === 'dashboard' ? (
-          <Dashboard items={items || []} onOpenProject={setSelectedProjectId} onNavigate={navigate} />
+          <Dashboard
+            items={items || []}
+            onOpenProject={setSelectedProjectId}
+            onNavigate={navigate}
+            onMovePhase={handlers.movePhase}
+          />
         ) : page === 'ideas' ? (
-          <Ideas items={items || []} onAddIdea={handlers.addIdea} onMoveToUpcoming={handlers.moveToUpcoming} />
+          <Ideas
+            items={items || []}
+            onAddIdea={handlers.addIdea}
+            onMoveToUpcoming={handlers.moveToUpcoming}
+            onMovePhase={handlers.movePhase}
+          />
         ) : page === 'upcoming' ? (
           <Upcoming
             items={items || []}
@@ -106,6 +141,7 @@ function Shell({ user }) {
             onToggleResource={handlers.toggleResource}
             onAddResource={handlers.addResource}
             onSendToUpNext={handlers.sendToUpNext}
+            onMovePhase={handlers.movePhase}
           />
         ) : page === 'upnext' ? (
           <UpNext
@@ -113,9 +149,10 @@ function Shell({ user }) {
             onUpdatePlanning={handlers.updatePlanning}
             onToggleDay={handlers.toggleDay}
             onStartActive={handlers.startActive}
+            onMovePhase={handlers.movePhase}
           />
         ) : (
-          <Done items={items || []} />
+          <Done items={items || []} onMovePhase={handlers.movePhase} />
         )}
       </main>
     </div>

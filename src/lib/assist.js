@@ -7,6 +7,7 @@
 // happens in the page component, and only when she clicks "Use this."
 
 import { callClaude, safeParseJson } from './claude.js';
+import { PHASES } from '../theme.js';
 
 export async function draftIdeaExpansion(idea) {
   const text = await callClaude(
@@ -79,8 +80,18 @@ export async function generateProgressReport(item) {
   const tasks = item.tasks || [];
   const done = tasks.filter((t) => t.done).length;
   const logText = (item.log || []).map((entry) => `${entry.date}: ${entry.note}`).join('\n') || 'No log entries.';
+  const historyText =
+    (item.history || [])
+      .map((entry) => {
+        const date = new Date(entry.at).toISOString().slice(0, 10);
+        const to = PHASES[entry.to]?.label || entry.to;
+        return entry.from ? `${date}: moved from ${PHASES[entry.from]?.label || entry.from} to ${to}` : `${date}: created in ${to}`;
+      })
+      .join('\n') || 'No phase movement logged.';
   return callClaude(
     `Project: "${item.title}". Tasks complete: ${done}/${tasks.length}. Recent log:\n${logText}\n\n` +
-      `Write a short 1-3 sentence progress summary. Plain text, no markdown.`,
+      `Phase movement history:\n${historyText}\n\n` +
+      `Write a short 1-3 sentence progress summary. You may reference how long it's been in its current ` +
+      `phase or notable jumps between phases if relevant. Plain text, no markdown.`,
   );
 }

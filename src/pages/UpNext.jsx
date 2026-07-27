@@ -1,9 +1,9 @@
-import { AIAssist, Card, EmptyState, KindPill } from '../ui.jsx';
+import { AIAssist, Card, EmptyState, KindPill, PhaseJump } from '../ui.jsx';
 import { suggestWeeklyPlan } from '../lib/assist.js';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-function PlanCard({ item, onUpdatePlanning, onToggleDay, onStartActive }) {
+function PlanCard({ item, onUpdatePlanning, onToggleDay, onStartActive, onMovePhase }) {
   const days = item.weeklyPlan || [];
 
   return (
@@ -55,11 +55,12 @@ function PlanCard({ item, onUpdatePlanning, onToggleDay, onStartActive }) {
       <button type="button" className="btn-primary" onClick={() => onStartActive(item.id)}>
         Start on the Workbench →
       </button>
+      <PhaseJump item={item} onMove={onMovePhase} />
     </Card>
   );
 }
 
-export default function UpNext({ items, onUpdatePlanning, onToggleDay, onStartActive }) {
+export default function UpNext({ items, onUpdatePlanning, onToggleDay, onStartActive, onMovePhase }) {
   const upNext = items.filter((i) => i.status === 'on-deck');
 
   return (
@@ -88,6 +89,7 @@ export default function UpNext({ items, onUpdatePlanning, onToggleDay, onStartAc
                 onUpdatePlanning={onUpdatePlanning}
                 onToggleDay={onToggleDay}
                 onStartActive={onStartActive}
+                onMovePhase={onMovePhase}
               />
             ))}
           </div>

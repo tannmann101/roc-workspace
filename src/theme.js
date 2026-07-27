@@ -58,3 +58,7 @@ export const PHASES = {
   done: { key: 'done', label: 'Done', singular: 'Done', color: SAGE, soft: SAGE_SOFT },
 };
 
+// Ordered phase keys -- drives the universal "move to any phase" control,
+// since a jump should never block on the linear idea→...→done path.
+export const PHASE_ORDER = ['idea', 'pending', 'on-deck', 'active', 'done'];
+

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KIND_COLORS, KIND_LABELS } from './theme.js';
+import { KIND_COLORS, KIND_LABELS, PHASES, PHASE_ORDER } from './theme.js';
 
 export function Card({ className = '', children, onClick, ...rest }) {
   return (
@@ -21,6 +21,56 @@ export function KindPill({ kind }) {
     <span className="kind-pill" style={{ background: KIND_COLORS[kind] }}>
       {KIND_LABELS[kind]}
     </span>
+  );
+}
+
+// The universal "jump to any phase" control -- a movement between phases
+// is just a status change, so nothing should have to walk the linear
+// idea → ... → done path to get there. Stops click/keydown propagation so
+// it can sit inside a whole-card onClick (e.g. the Dashboard's project
+// cards) without also triggering the card's own click handler.
+export function PhaseJump({ item, onMove }) {
+  if (!onMove) return null;
+  const options = PHASE_ORDER.filter((key) => key !== item.status);
+
+  return (
+    <select
+      className="input phase-jump"
+      value=""
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onChange={(e) => {
+        if (e.target.value) onMove(item.id, e.target.value);
+      }}
+      aria-label={`Move "${item.title}" to a different phase`}
+    >
+      <option value="">Move to...</option>
+      {options.map((key) => (
+        <option key={key} value={key}>
+          {PHASES[key].label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+// A compact breadcrumb of an item's phase transitions, for the Active
+// project view and anywhere else the full movement history is useful.
+export function PhaseHistory({ history }) {
+  if (!history || history.length === 0) {
+    return <p className="empty-note">No moves logged yet.</p>;
+  }
+  return (
+    <ul className="history-list">
+      {history.map((entry, i) => (
+        <li key={i}>
+          <span className="log-date">{new Date(entry.at).toLocaleDateString()}</span>
+          {entry.from
+            ? `${PHASES[entry.from]?.label || entry.from} → ${PHASES[entry.to]?.label || entry.to}`
+            : `Started in ${PHASES[entry.to]?.label || entry.to}`}
+        </li>
+      ))}
+    </ul>
   );
 }
 

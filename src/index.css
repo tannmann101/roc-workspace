@@ -530,6 +530,16 @@ h1, h2, h3 {
   gap: 8px;
 }
 
+.phase-jump {
+  width: auto;
+  align-self: flex-start;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 11px;
+  cursor: pointer;
+  color: #635642;
+}
+
 .day-picker {
   display: flex;
   gap: 6px;
@@ -794,4 +804,21 @@ h1, h2, h3 {
   font-weight: 700;
   color: #948569;
   text-transform: uppercase;
+}
+
+/* ---------- Phase history ---------- */
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-list li {
+  font-size: 13px;
+  color: #2B241C;
+  line-height: 1.5;
 }
