@@ -1,14 +1,15 @@
 // assist.js
-// Real AI-assist generators, backed by the Gemini free tier (see gemini.js
-// and the README for setup). Every function here is the "generate" half of
+// Real AI-assist generators, backed by the real Claude API through a
+// Firebase Cloud Function proxy (see claude.js, functions/index.js, and
+// the README for setup). Every function here is the "generate" half of
 // the AIAssist pattern used throughout the app: it only ever returns a
 // draft for a preview. Nothing in this file writes to item state -- that
 // happens in the page component, and only when she clicks "Use this."
 
-import { callGemini, safeParseJson } from './gemini.js';
+import { callClaude, safeParseJson } from './claude.js';
 
 export async function draftIdeaExpansion(idea) {
-  const text = await callGemini(
+  const text = await callClaude(
     `You're helping someone think through a home project idea before they commit to it. ` +
       `The idea: "${idea.title}"${idea.notes ? ` -- notes: ${idea.notes}` : ''}${idea.category ? ` (category: ${idea.category})` : ''}.\n\n` +
       `Give exactly 3 short, concrete questions or considerations she should think about before moving this idea forward. ` +
@@ -22,7 +23,7 @@ export async function draftIdeaExpansion(idea) {
 }
 
 export async function draftProfile(idea) {
-  const text = await callGemini(
+  const text = await callClaude(
     `You're drafting a project profile for a home-workshop planning app. ` +
       `The idea: "${idea.title}"${idea.notes ? ` -- notes: ${idea.notes}` : ''}. ` +
       `Kind: ${idea.kind}. Category: ${idea.category || 'unspecified'}.\n\n` +
@@ -42,7 +43,7 @@ export async function draftProfile(idea) {
 }
 
 export async function suggestWeeklyPlan(item) {
-  const text = await callGemini(
+  const text = await callClaude(
     `Someone is planning when to work on "${item.title}", estimated timeframe: "${item.timeframe || 'unknown'}". ` +
       `Suggest which 1-2 days of a Mon-Sun week fit best for a task like this (weekend-sized work should land on Sat/Sun, ` +
       `quick tasks can go on a weekday evening). Respond with ONLY strict JSON, no markdown fences: ` +
@@ -67,7 +68,7 @@ export async function generateWeeklyFocus(activeItems) {
       return `- ${item.title}${item.dueDate ? ` (due ${item.dueDate})` : ''}: next task is ${next ? `"${next.label}"` : 'none logged'}`;
     })
     .join('\n');
-  return callGemini(
+  return callClaude(
     `Here are the active projects in a home workshop tracker:\n${summary}\n\n` +
       `Write a short (2-4 sentence), warm, practical "this week's focus" note referencing what's next and any due dates. ` +
       `Plain text, no markdown.`,
@@ -78,7 +79,7 @@ export async function generateProgressReport(item) {
   const tasks = item.tasks || [];
   const done = tasks.filter((t) => t.done).length;
   const logText = (item.log || []).map((entry) => `${entry.date}: ${entry.note}`).join('\n') || 'No log entries.';
-  return callGemini(
+  return callClaude(
     `Project: "${item.title}". Tasks complete: ${done}/${tasks.length}. Recent log:\n${logText}\n\n` +
       `Write a short 1-3 sentence progress summary. Plain text, no markdown.`,
   );
